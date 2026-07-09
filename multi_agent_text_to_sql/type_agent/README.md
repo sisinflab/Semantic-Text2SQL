@@ -1,114 +1,116 @@
-# Type Agent — pipeline per informazioni di tipo
+# Type Agent - Data-Type Information Pipeline
 
-## Panoramica
+This repository supports the paper **"Unified Knowledge Graphs for Adaptive Semantic Refinement in Text-to-SQL"**, submitted to the ISWC 2026 Industry Track, and is developed in collaboration with the **IBM T.J. Watson Research Center**.
 
-Questa cartella contiene gli script per selezionare e inserire informazioni sul tipo di dato delle colonne (INTEGER, REAL, TEXT, DATE, DATETIME) nel flusso Text-to-SQL. Il pipeline supporta due modalità operative:
+## Overview
 
-- tramite il grafo RDF (SPARQL) — utile quando si integra questo agente con altri agenti che usano l'ontologia;
-- tramite lo schema SQLite (SQL) — utile quando l'agente viene eseguito in modalità standalone senza RDF.
+This folder contains scripts for selecting and inserting column data-type information (INTEGER, REAL, TEXT, DATE, DATETIME) into the Text-to-SQL flow. The pipeline supports two operating modes:
 
-Entrambi i template (`_0_templete_sparql.py` e `_0_templete_sql.py`) sono mantenuti e servono a garantire flessibilità d'uso. La Pipeline attualemnte usa `_0_templete_sparql.py` ma è facilmente modificabile.
+- through the RDF graph (SPARQL), useful when this agent is integrated with other agents that use the ontology;
+- through the SQLite schema (SQL), useful when the agent is run in standalone mode without RDF.
 
-## Requisiti
+Both templates (`_0_templete_sparql.py` and `_0_templete_sql.py`) are maintained to preserve usage flexibility. The current pipeline uses `_0_templete_sparql.py`, but it can be adapted easily.
+
+## Requirements
 
 - Python 3.8+
-- Librerie: rdflib, vllm, transformers, torch, tqdm
-- File RDF `grafo.ttl` (se si usa la modalità SPARQL)
-- Cartella `data/original/dev_databases/<db_id>/<db_id>.sqlite` (se si usa la modalità SQL)
-- Variabile d'ambiente `MODEL_PATH` per gli script vLLM (oppure eseguire localmente con `use_agent_local.py`)
+- Libraries: `rdflib`, `vllm`, `transformers`, `torch`, `tqdm`
+- RDF file `grafo.ttl` when using SPARQL mode
+- Folder `data/original/dev_databases/<db_id>/<db_id>.sqlite` when using SQL mode
+- `MODEL_PATH` environment variable for vLLM scripts, unless running locally with `use_agent_local.py`
 
-## File principali e descrizione aggiornata
+## Main Files and Updated Description
 
 - `_1_agent.py`
-  - Genera i prompt chiedendo quali data types sono necessari per ciascuna domanda.
-  - Input: "path/to/dataset.json" 
+  - Generates prompts asking which data types are needed for each question.
+  - Input: `path/to/dataset.json`
   - Output: `_1_generated_prompts_by_id.json`
-  - Uso: `python _1_agent.py`
+  - Usage: `python _1_agent.py`
 
 - `_2_run_prompts_vllm.py` + `_2_job_run_prompts_vllm.sh`
-  - Esegue i prompt su vLLM e normalizza l'output in JSON strutturato.
-  - Input: `_1_generated_prompts_by_id.json` e `MODEL_PATH`
+  - Runs prompts through vLLM and normalizes the output into structured JSON.
+  - Input: `_1_generated_prompts_by_id.json` and `MODEL_PATH`
   - Output: `_2_vllm_type_selection_agent_outputs.json`
-  - Uso: `MODEL_PATH=/path/to/model python _2_run_prompts_vllm.py`
+  - Usage: `MODEL_PATH=/path/to/model python _2_run_prompts_vllm.py`
 
 - `_3_create_dataset_with_data_type.py`
-  - Elabora l'output del type-agent, interroga il grafo RDF (tramite `_0_templete_sparql.py`) per ottenere le colonne associate ai tipi selezionati e produce `_3_dataset_with_sparql_types.json`.
-  - Se non è presente il grafo, lo script può essere adattato per lavorare con dati SQL.
-  - Uso: `python _3_create_dataset_with_data_type.py`
+  - Processes the type-agent output, queries the RDF graph through `_0_templete_sparql.py` to retrieve columns associated with selected types, and produces `_3_dataset_with_sparql_types.json`.
+  - If the graph is unavailable, the script can be adapted to work with SQL data.
+  - Usage: `python _3_create_dataset_with_data_type.py`
 
 - `_4_add_type_info_in_original.py`
-  - Unisce il file prodotto dallo step precedente col dataset originale creando `_4_source_dataset_with_columns_by_type.json`.
-  - Uso: `python _4_add_type_info_in_original.py`
+  - Merges the file produced by the previous step with the original dataset, creating `_4_source_dataset_with_columns_by_type.json`.
+  - Usage: `python _4_add_type_info_in_original.py`
 
 - `_5_vllm_with_type.py` + `_5_job_vllm_with_type.sh`
-  - Genera query SQL usando il dataset arricchito (tipi e mapping colonne). Tipicamente eseguito su cluster.
-  - Uso: `MODEL_PATH=/path/to_model python _5_vllm_with_type.py` o tramite `_5_job_vllm_with_type.sh`
+  - Generates SQL queries using the enriched dataset, including data types and column mappings. Typically executed on a cluster.
+  - Usage: `MODEL_PATH=/path/to_model python _5_vllm_with_type.py` or through `_5_job_vllm_with_type.sh`
 
 - `_0_templete_sparql.py`
-  - Contiene le utility per interrogare il grafo RDF `grafo.ttl`.
-  - Funzione principale: `query_columns_by_type_sparql(database_name, data_type)`.
+  - Contains utilities for querying the RDF graph `grafo.ttl`.
+  - Main function: `query_columns_by_type_sparql(database_name, data_type)`.
 
 - `_0_templete_sql.py`
-  - Contiene le utility per leggere schemi SQLite e ottenere colonne per tipo direttamente dallo schema.
-  - Funzione principale: `query_columns_by_type_sql(database_name, data_type)`.
+  - Contains utilities for reading SQLite schemas and retrieving columns by type directly from the schema.
+  - Main function: `query_columns_by_type_sql(database_name, data_type)`.
 
 - `_0_check_sparql_sql_match.py`
-  - Confronta i risultati ottenuti tramite SPARQL e quelli ottenuti tramite query SQL sullo schema, utile per validare la coerenza tra RDF e database reale.
+  - Compares results obtained through SPARQL with results obtained through SQL queries over the schema. This is useful for validating consistency between the RDF graph and the real database.
 
-File di esempio già presenti: `_3_dataset_with_sparql_types.json`, `_4_source_dataset_with_columns_by_type.json`, `_2_vllm_type_selection_agent_outputs.json`, `_5_pred_with_type.json`.
+Example files already present: `_3_dataset_with_sparql_types.json`, `_4_source_dataset_with_columns_by_type.json`, `_2_vllm_type_selection_agent_outputs.json`, `_5_pred_with_type.json`.
 
-## Modalità operative e raccomandazioni
+## Operating Modes and Recommendations
 
-- Modalità SPARQL (consigliata se si integra con altri agenti semantici): usa `_0_templete_sparql.py` per mappare tipi su colonne tramite l'ontologia RDF. Permette di sfruttare descrizioni e concetti semantici condivisi.
-- Modalità SQL (standalone): usa `_0_templete_sql.py` per estrarre tipi direttamente dallo schema SQLite, utile quando non è disponibile il grafo RDF.
-- I template SPARQL e SQL sono mantenuti entrambi per permettere transizione o funzionamento parallelo.
+- SPARQL mode, recommended when integrating with other semantic agents: uses `_0_templete_sparql.py` to map types to columns through the RDF ontology. This makes it possible to reuse shared descriptions and semantic concepts.
+- SQL mode, standalone: uses `_0_templete_sql.py` to extract types directly from the SQLite schema, useful when no RDF graph is available.
+- Both SPARQL and SQL templates are maintained to support transitions or parallel operation.
 
-## Ordine consigliato di esecuzione (pulito)
+## Recommended Clean Execution Order
 
-1. Generare i prompt per il type-selection
+1. Generate prompts for type selection.
 
 ```bash
 python _1_agent.py
 ```
 
-2. Eseguire i prompt con vLLM
+2. Run prompts with vLLM.
 
 ```bash
 MODEL_PATH=/path/to_model python _2_run_prompts_vllm.py
-# oppure usare _2_job_run_prompts_vllm.sh su cluster
+# or use _2_job_run_prompts_vllm.sh on a cluster
 ```
 
-3. Creare il dataset con le colonne mappate per tipo (SPARQL o SQL)
+3. Create the dataset with columns mapped by type, through SPARQL or SQL.
 
 ```bash
 python _3_create_dataset_with_data_type.py
 ```
 
-4. Unire le informazioni al dataset originale
+4. Merge the information into the original dataset.
 
 ```bash
 python _4_add_type_info_in_original.py
 ```
 
-5. (Opzionale) Verificare coerenza SPARQL vs SQL
+5. Optionally check SPARQL-vs-SQL consistency.
 
 ```bash
 python _0_check_sparql_sql_match.py
 ```
 
-6. Generare le query SQL usando il dataset arricchito
+6. Generate SQL queries using the enriched dataset.
 
 ```bash
-# su cluster
+# on cluster
 sbatch _5_job_vllm_with_type.sh
 
-# in locale (assicurarsi MODEL_PATH)
+# locally, with MODEL_PATH configured
 MODEL_PATH=/path/to_model python _5_vllm_with_type.py
 ```
 
-## Note pratiche
+## Practical Notes
 
-- Verificare il percorso del file TTL in `_0_templete_sparql.py`.
-- Controllare che i file `.sqlite` siano presenti in `data/original/dev_databases/<db_id>/`.
-- I file intermedi (prompt, output vLLM, dataset con tipi) sono utili per debug e possono essere ispezionati manualmente.
-- Adattare gli script di job (`.sh`) alle risorse del cluster (GPU, RAM, tempo).
+- Verify the TTL file path in `_0_templete_sparql.py`.
+- Check that `.sqlite` files are available under `data/original/dev_databases/<db_id>/`.
+- Intermediate files, including prompts, vLLM outputs, and type-enriched datasets, are useful for debugging and can be inspected manually.
+- Adapt job scripts (`.sh`) to the cluster resources, including GPU, RAM, and time limits.

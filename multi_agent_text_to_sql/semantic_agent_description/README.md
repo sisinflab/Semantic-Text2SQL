@@ -1,102 +1,115 @@
 # Semantic Agent with Description Pipeline
 
+This repository supports the paper **"Unified Knowledge Graphs for Adaptive Semantic Refinement in Text-to-SQL"**, submitted to the ISWC 2026 Industry Track, and is developed in collaboration with the **IBM T.J. Watson Research Center**.
+
 ## Overview
 
-Questo pipeline implementa un approccio **multi-agente semantico potenziato** per la generazione di query SQL. A differenza della versione semplice (`semantic_agent`), introduce un **secondo agente specializzato** che genera **descrizioni dettagliate** dei concetti semantici, fornendo al modello di generazione SQL un contesto molto più ricco.
+This pipeline implements an **enhanced semantic multi-agent approach** for SQL query generation. Compared with the simpler `semantic_agent` version, it introduces a **second specialized agent** that generates **detailed descriptions** of semantic concepts, giving the SQL generation model richer context.
 
-## Architettura
+## Architecture
 
-Il pipeline comprende tre componenti principali:
+The pipeline includes three main components:
 
-1. **Semantic Ontology (RDF)**: Grafo RDF che mappa i concetti semantici alle colonne dei database
-2. **Selection Agent - Prima Scrematura**: Identifica velocemente i concetti semantici potenzialmente rilevanti
-3. **Selection Agent - Raffinamento**: Valida e raffinata la selezione usando le descrizioni dal grafo RDF
+1. **Semantic Ontology (RDF)**: an RDF graph that maps semantic concepts to database columns
+2. **Selection Agent - First Pass**: quickly identifies potentially relevant semantic concepts
+3. **Selection Agent - Refinement**: validates and refines the selection using descriptions from the RDF graph
 
-## Workflow del Pipeline
+## Pipeline Workflow
 
-### Step 0: Template Semantico (`_0_semantic_templete.py`)
-- **Utility di supporto** che fornisce funzioni di query al grafo RDF
-- Carica il file del grafo (grafo RDF in formato Turtle)
-- Funzioni principali:
-  - `get_entities_by_database()`: Recupera entità disponibili per un database
-  - `concept_appears_as_semantic_meaning()`: Verifica se un concetto è presente come significato semantico
+### Step 0: Semantic Template (`_0_semantic_templete.py`)
 
-### Step 1: Generazione Prompt per Selection Agent (`_1_create_prompt_for_selection_agent.py`)
-- Elabora il dataset originale e crea prompt per l'agente di selezione
-- Per ogni domanda (question_id + db_id), genera un prompt che chiede all'agente di:
-  - Identificare i **concetti semantici rilevanti** dalla lista disponibile
-  - Elencare brevemente la loro importanza per rispondere alla domanda
+- Support utility that provides query functions over the RDF graph
+- Loads the graph file (RDF graph in Turtle format)
+- Main functions:
+  - `get_entities_by_database()`: retrieves available entities for a database
+  - `concept_appears_as_semantic_meaning()`: checks whether a concept appears as a semantic meaning
+
+### Step 1: Prompt Generation for the Selection Agent (`_1_create_prompt_for_selection_agent.py`)
+
+- Processes the original dataset and creates prompts for the selection agent
+- For each question (`question_id` + `db_id`), generates a prompt asking the agent to:
+  - identify the **relevant semantic concepts** from the available list
+  - briefly explain their importance for answering the question
 - Output: `_1_generated_semantic_selection_prompts_by_id.json`
 
-**Concetti semantici supportati**:
+**Supported semantic concepts**:
+
 - `identifier`, `foreign_identifier`
 - `person_name`, `person_first_name`, `person_last_name`
 - `organization_name`, `school_name`, `team_name`
 - `event_name`, `title`, `description_text`
 - `category`, `status`, `gender`, `nationality`, `country_name`
-- E molti altri...
+- and many others
 
-### Step 2: Esecuzione Selection Agent - Prima Scrematura (`_2_run_agent_selection_prompts.py`)
-- Esegue il modello `Qwen2.5-Coder-7B-Instruct` via vLLM
-- Input: Prompt di selezione generati nello step 1
+### Step 2: Run Selection Agent - First Pass (`_2_run_agent_selection_prompts.py`)
+
+- Runs `Qwen2.5-Coder-7B-Instruct` through vLLM
+- Input: selection prompts generated in Step 1
 - Output: `_2_vllm_semantic_agent_selection_outputs_Qwen2.5-Coder-7B-Instruct_*.json`
 - Job submission: `job_2_run_agent_selection_prompts.sh`
-- **Risultato**: Lista iniziale di concetti semantici identificati come rilevanti (SENZA descrizioni)
-- **Scopo**: Fare una prima scrematura veloce dalla lista lunga di tutti i concetti disponibili
+- **Result**: initial list of semantic concepts identified as relevant, without descriptions
+- **Purpose**: perform a fast first pass over the long list of available concepts
 
-### Step 2.1: Generazione Prompt per Selection Agent Raffinato (`_2.1_create_prompt_for_agent.py`)
-- Elabora l'output del primo Selection Agent (Step 2)
-- Prende SOLO i concetti semantici già selezionati
-- Per ogni concetto selezionato, genera un nuovo prompt che chiede al modello di:
-  - Verificare la rilevanza del concetto usando le **descrizioni dal grafo RDF**
-  - Raffinare la selezione iniziale
-- **Arricchimento**: Incorpora nel prompt le descrizioni semantiche presenti nel grafo RDF per i concetti selezionati
+### Step 2.1: Prompt Generation for the Refined Selection Agent (`_2.1_create_prompt_for_agent.py`)
+
+- Processes the output of the first Selection Agent (Step 2)
+- Takes only the semantic concepts already selected
+- For each selected concept, generates a new prompt asking the model to:
+  - verify concept relevance using the **descriptions from the RDF graph**
+  - refine the initial selection
+- **Enrichment**: incorporates semantic descriptions from the RDF graph for the selected concepts into the prompt
 - Output: `_2.1_generated_semantic_prompts_by_id.json`
 
-### Step 2.2: Esecuzione Selection Agent Raffinato (`_2.2_run_agent_prompts.py`)
-- Esegue il modello LLM per la SECONDA SELEZIONE
-- Input: Prompt raffinati con descrizioni da RDF (Step 2.1)
+### Step 2.2: Run Refined Selection Agent (`_2.2_run_agent_prompts.py`)
+
+- Runs the LLM for the second selection stage
+- Input: refined prompts with RDF descriptions from Step 2.1
 - Output: `_2.2_vllm_semantic_agent_outputs_Qwen2.5-Coder-7B-Instruct_*.json`
 - Job submission: `job_2.2_run_agent_prompts_vllm.sh`
-- **Risultato**: Lista finale, raffinata e validata di concetti semantici rilevanti
-- **Scopo**: Fare una seconda selezione più accurata usando il contesto semantico del grafo
+- **Result**: final refined and validated list of relevant semantic concepts
+- **Purpose**: perform a more accurate second selection using semantic graph context
 
-### Step 3: Estrazione Informazioni Semantiche (`_3_extract_semantic_info.py`)
-- Elabora l'output del Description Agent
-- Estrae i concetti semantici selezionati con le loro descrizioni
-- Interroga il grafo RDF per ottenere le colonne associate a ogni concetto
-- Crea un mapping strutturato: concetto → descrizione → colonne del database
+### Step 3: Semantic Information Extraction (`_3_extract_semantic_info.py`)
+
+- Processes the Description Agent output
+- Extracts selected semantic concepts and their descriptions
+- Queries the RDF graph to retrieve the columns associated with each concept
+- Creates a structured mapping: concept -> description -> database columns
 - Output: `_3_dataset_with_semantic_info.json`
 
-### Step 4: Arricchimento Dataset Originale (`_4_add_semantic_info_to_original_dataset.py`)
-- Integra le informazioni semantiche nel dataset originale
-- Aggiunce per ogni domanda:
-  - Lista di concetti semantici selezionati
-  - Descrizioni dettagliate di ogni concetto
-  - Mapping colonne → concetti semantici
-  - Contesto della descrizione
-- Cosi si ottiene un informazione semantica specifica per ogni domanda
+### Step 4: Original Dataset Enrichment (`_4_add_semantic_info_to_original_dataset.py`)
+
+- Integrates semantic information into the original dataset
+- Adds the following information for each question:
+  - list of selected semantic concepts
+  - detailed descriptions for each concept
+  - column-to-semantic-concept mapping
+  - description context
+- The result is question-specific semantic information for each dataset item
 - Output: `_4_source_dataset_with_columns_by_semantic_concept.json`
 
-### Step 5: Generazione SQL con Contesto Semantico Arricchito (`_5_execute_sql_generation_with_semantic.py`)
-- Genera query SQL utilizzando il modello LLM
-- **Arricchimento massimo del prompt**: Include:
-  - Schema del database
-  - Domanda naturale
-  - Concetti semantici rilevanti
-  - **Descrizioni dettagliate** di ogni concetto
-  - Mapping di quali colonne rappresentano quali concetti
-  - Contesto semantico dal Description Agent
-- Output: `_5_vllm_execute.json` (predizioni SQL finale)
+### Step 5: SQL Generation with Enriched Semantic Context (`_5_execute_sql_generation_with_semantic.py`)
+
+- Generates SQL queries using the LLM
+- **Maximum prompt enrichment** includes:
+  - database schema
+  - natural-language question
+  - relevant semantic concepts
+  - **detailed descriptions** for each concept
+  - mapping of which columns represent which concepts
+  - semantic context from the Description Agent
+- Output: `_5_vllm_execute.json` (final SQL predictions)
 - Job submission: `job_5_vllm_execute_sql_with_semantic.sh`
 
-## File Principali
+## Main Files
 
 ### Input
-- Dataset originale: "path/to/dataset.json" 
-- Grafo RDF: `grafo.ttl` (formato Turtle, contiene la struttura semantica dei database)
 
-### Output Intermedi
+- Original dataset: `path/to/dataset.json`
+- RDF graph: `grafo.ttl` (Turtle format, contains the semantic structure of the databases)
+
+### Intermediate Outputs
+
 - Step 1: `_1_generated_semantic_selection_prompts_by_id.json`
 - Step 2: `_2_vllm_semantic_agent_selection_outputs_Qwen2.5-Coder-7B-Instruct_*.json`
 - Step 2.1: `_2.1_generated_semantic_prompts_by_id.json`
@@ -104,108 +117,114 @@ Il pipeline comprende tre componenti principali:
 - Step 3: `_3_dataset_with_semantic_info.json`
 - Step 4: `_4_source_dataset_with_columns_by_semantic_concept.json`
 
-### Output Finale
-- `_5_vllm_execute.json` - Query SQL generate con contesto semantico arricchito
+### Final Output
 
-## Esecuzione
+- `_5_vllm_execute.json` - SQL queries generated with enriched semantic context
 
-### Prerequisiti
-- Python 3.x con librerie: `rdflib`, `transformers`, `vllm`, `torch`, `tqdm`
-- Modello Qwen2.5-Coder-7B-Instruct disponibile
-- Grafo RDF `grafo.ttl` nella cartella
-- Accesso a infrastrutture GPU su CINECA
+## Execution
 
-### Esecuzione Step-by-Step
+### Prerequisites
+
+- Python 3.x with `rdflib`, `transformers`, `vllm`, `torch`, and `tqdm`
+- Available Qwen2.5-Coder-7B-Instruct model
+- RDF graph `grafo.ttl` in the folder
+- Access to GPU infrastructure on CINECA
+
+### Step-by-Step Execution
+
 ```bash
-# Step 0: (Utility - usato dagli altri script)
-# Non eseguire direttamente
+# Step 0: Utility used by the other scripts
+# Do not run directly
 
-# Step 1: Generazione prompt per Selection Agent
+# Step 1: Generate prompts for the Selection Agent
 python _1_create_prompt_for_selection_agent.py
 
-# Step 2: Esecuzione Selection Agent (via SLURM su CINECA)
+# Step 2: Run Selection Agent (through SLURM on CINECA)
 sbatch job_2_run_agent_selection_prompts.sh
 
-# Step 2.1: Generazione prompt per Description Agent
+# Step 2.1: Generate prompts for the Description Agent
 python _2.1_create_prompt_for_agent.py
 
-# Step 2.2: Esecuzione Description Agent (via SLURM su CINECA)
+# Step 2.2: Run Description Agent (through SLURM on CINECA)
 sbatch job_2.2_run_agent_prompts_vllm.sh
 
-# Step 3: Estrazione informazioni semantiche
+# Step 3: Extract semantic information
 python _3_extract_semantic_info.py
 
-# Step 4: Arricchimento dataset originale
+# Step 4: Enrich the original dataset
 python _4_add_semantic_info_to_original_dataset.py
 
-# Step 5: Generazione SQL con contesto semantico (via SLURM su CINECA)
+# Step 5: Generate SQL with semantic context (through SLURM on CINECA)
 sbatch job_5_vllm_execute_sql_with_semantic.sh
 ```
 
-## Flusso Logico
+## Logical Flow
 
-```
-Domanda in linguaggio naturale
-         ↓
-   [Step 1] Crea prompt con TUTTI i concetti disponibili
-         ↓
-   [Step 2] Prima selezione veloce (lista lunga → lista più corta)
-         ↓
-   [Step 2.1] Crea prompt per i soli concetti selezionati + descrizioni da RDF
-         ↓
-   [Step 2.2] Seconda selezione raffinata usando descrizioni semantiche
-         ↓
-   [Step 3] Mapping: Concetti raffinati → Descrizioni → Colonne
-         ↓
-   [Step 4] Arricchimento dataset con concetti semantici validati
-         ↓
-   [Step 5] Generazione SQL con contesto semantico raffinato
-         ↓
-     Query SQL ottimizzata
-```
-
-## Vantaggi Rispetto alla Versione Semplice
-
-1. **Due Fasi di Selezione**: Prima scrematura veloce per ridurre il set, poi raffinamento con descrizioni
-2. **Selezione Consapevole del Contesto**: La seconda selezione usa le descrizioni RDF per valutare rilevanza
-3. **Riduzione Rumore**: Filtra i concetti "falsi positivi" della prima selezione veloce
-4. **Interpretazione Semantica Profonda**: Il modello valuta concetti non solo per nome, ma per descrizione
-5. **Efficienza Computazionale**: Due agenti più leggeri invece di uno pesante
-6. **Tracciabilità**: È possibile confrontare la prima e seconda selezione per capire il raffinamento
-
-## Architettura dei Due Selection Agent
-
-### Selection Agent - Fase 1 (Scrematura Veloce)
-```
-Input: Domanda + Schema + Lista COMPLETA di concetti
-Processo: Analizza la domanda, seleziona concetti potenzialmente rilevanti
-Output: [concetto_1, concetto_2, ...] (lista ristretta)
-Nota: Non usa descrizioni RDF
+```text
+Natural-language question
+         |
+   [Step 1] Create prompts with all available concepts
+         |
+   [Step 2] Fast first selection (long list -> shorter list)
+         |
+   [Step 2.1] Create prompts only for selected concepts + RDF descriptions
+         |
+   [Step 2.2] Refined second selection using semantic descriptions
+         |
+   [Step 3] Mapping: refined concepts -> descriptions -> columns
+         |
+   [Step 4] Enrich dataset with validated semantic concepts
+         |
+   [Step 5] Generate SQL with refined semantic context
+         |
+     Optimized SQL query
 ```
 
-### Selection Agent - Fase 2 (Raffinamento con Descrizioni)
+## Advantages over the Simple Version
+
+1. **Two Selection Stages**: fast first pass to reduce the set, followed by refinement with descriptions
+2. **Context-Aware Selection**: the second selection uses RDF descriptions to assess relevance
+3. **Noise Reduction**: filters false-positive concepts from the fast first selection
+4. **Deeper Semantic Interpretation**: the model evaluates concepts not only by name, but also by description
+5. **Computational Efficiency**: two lighter agents instead of one heavier agent
+6. **Traceability**: the first and second selections can be compared to understand the refinement process
+
+## Two-Agent Selection Architecture
+
+### Selection Agent - Phase 1 (Fast First Pass)
+
+```text
+Input: Question + schema + complete list of concepts
+Process: Analyze the question and select potentially relevant concepts
+Output: [concept_1, concept_2, ...] (restricted list)
+Note: Does not use RDF descriptions
 ```
-Input: Domanda + Concetti selezionati in Fase 1 + Descrizioni RDF per questi concetti
-Processo: Valida rilevanza usando contesto semantico del grafo RDF
-Output: [concetto_1, concetto_2, ...] (lista ancora più raffinata)
-Nota: Usa le descrizioni dal grafo per decisioni più accurate
+
+### Selection Agent - Phase 2 (Refinement with Descriptions)
+
+```text
+Input: Question + concepts selected in Phase 1 + RDF descriptions for those concepts
+Process: Validate relevance using semantic context from the RDF graph
+Output: [concept_1, concept_2, ...] (further refined list)
+Note: Uses graph descriptions for more accurate decisions
 ```
 
 ### SQL Generation
-```
-Input: Domanda + Schema + Concetti (dalla Fase 2) + Mapping colonne
-Processo: Genera query SQL usando i concetti semantici validati
-Output: Query SQL
+
+```text
+Input: Question + schema + concepts from Phase 2 + column mapping
+Process: Generate SQL using the validated semantic concepts
+Output: SQL query
 ```
 
-## Note Importanti
+## Important Notes
 
-- Il grafo RDF deve essere mantenuto aggiornato quando lo schema del database cambia
-- I concetti semantici predefiniti possono essere estesi aggiungendo nuove entry nella lista
-- Il pipeline è ottimizzato per esecuzione su CINECA con accesso a infrastrutture GPU
-- Ogni step produce file JSON intermedi che possono essere ispezionati per debugging
-- Gli step 2, 2.2 e 5 richiedono tempo significativo e sono configurati per esecuzione via SLURM
-- La prima selezione (Step 2) è veloce e serve solo come filtro iniziale
-- La seconda selezione (Step 2.2) è più accurata perché usa il contesto semantico del grafo RDF
-- È possibile confrontare gli output di Step 2 e Step 2.2 per capire come le descrizioni RDF influenzano le selezioni
-- Il costo computazionale è simile alla versione semplice.
+- The RDF graph must be kept up to date when the database schema changes.
+- Predefined semantic concepts can be extended by adding new entries to the list.
+- The pipeline is optimized for execution on CINECA with access to GPU infrastructure.
+- Each step produces intermediate JSON files that can be inspected for debugging.
+- Steps 2, 2.2, and 5 require significant time and are configured for SLURM execution.
+- The first selection (Step 2) is fast and only acts as an initial filter.
+- The second selection (Step 2.2) is more accurate because it uses semantic context from the RDF graph.
+- Step 2 and Step 2.2 outputs can be compared to understand how RDF descriptions affect the selections.
+- The computational cost is similar to the simple version.

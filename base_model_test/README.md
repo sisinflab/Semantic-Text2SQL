@@ -1,37 +1,39 @@
 # Base Model Test
 
-Questa cartella contiene lo script `test_model_vllm.py`, che usa un modello vLLM per generare query SQL e salvare le predizioni in un file JSON.
+This repository supports the paper **"Unified Knowledge Graphs for Adaptive Semantic Refinement in Text-to-SQL"**, submitted to the ISWC 2026 Industry Track, and is developed in collaboration with the **IBM T.J. Watson Research Center**.
 
-## Cosa fa
+This folder contains `test_model_vllm.py`, which uses a vLLM model to generate SQL queries and save predictions to a JSON file.
 
-Lo script:
+## What It Does
 
-- carica il modello indicato in `MODEL_PATH`;
-- legge il dataset;
-- genera le query SQL in batch;
-- salva le predizioni in un file JSON chiamato `vllm_pred_sqls<nome_modello>.json`.
+The script:
 
-## Input principali
+- loads the model specified in `MODEL_PATH`;
+- reads the dataset;
+- generates SQL queries in batches;
+- saves predictions to a JSON file named `vllm_pred_sqls<model_name>.json`.
 
-- `MODEL_PATH`: percorso del modello da caricare;
-- `system_prompt.txt`: prompt di sistema usato durante la generazione;
-- il dataset con question, schema linking ed evidence.
+## Main Inputs
+
+- `MODEL_PATH`: path to the model to load;
+- `system_prompt.txt`: system prompt used during generation;
+- the dataset with questions, schema linking, and evidence.
 
 ## Output
 
-Il risultato della generazione viene salvato in JSON, con una coppia:
+The generation result is saved as JSON entries containing:
 
 - `id`
 - `sql`
 
-## Uso
+## Usage
 
-Esegui lo script dalla cartella del progetto con le variabili di ambiente necessarie già impostate.
+Run the script from the project folder with the required environment variables already configured.
 
 ```bash
 python test_model_vllm.py
 ```
 
-## Nota
+## Note
 
-Lo script è pensato per produrre le predizioni SQL da confrontare con i gold in una fase successiva di valutazione.
+This script is intended to produce SQL predictions that can later be compared against gold outputs during evaluation.

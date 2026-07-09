@@ -1,115 +1,116 @@
-# Graph Decoration Description — README
+# Graph Decoration Description
 
-## Panoramica
+This repository supports the paper **"Unified Knowledge Graphs for Adaptive Semantic Refinement in Text-to-SQL"**, submitted to the ISWC 2026 Industry Track, and is developed in collaboration with the **IBM T.J. Watson Research Center**.
 
-Questa cartella contiene gli strumenti e i dati per costruire, decorare e arricchire un knowledge graph semantico (RDF/Turtle) a partire dagli schemi dei database e da evidenze testuali. Il workflow include la generazione di descrizioni semantiche, la produzione di prompt, l'esecuzione di componenti automatici (auto-kg), e la creazione di grafi decorati e serializzati in TTL.
+## Overview
 
-Il materiale è organizzato per database (file TTL, descrizioni, commenti di concetto) e da una serie di script per automatizzare i passaggi.
+This folder contains the tools and data used to build, decorate, and enrich a semantic knowledge graph (RDF/Turtle) from database schemas and textual evidence. The workflow includes semantic description generation, prompt generation, automatic component execution through auto-kg, and the creation of decorated graphs serialized as TTL.
 
-## Struttura principale
+The material is organized by database, including TTL files, descriptions, and concept comments, and by scripts that automate the workflow steps.
 
-- `rdf_schema/` — TTL dei singoli database e `grafo.ttl` (ontologia/insieme delle risorse)
-- `descriptions/` — file `.semantic_evidence.txt` con evidence testuali per i database
-- `concept_comments/` — JSON con commenti/annotazioni per concetti specifici per ogni db
-- `prompts/` & `system_prompts/` — template e prompt usati per interagire con gli LLM
-- `script/` — script Python che automatizzano tutto il workflow
-- `auto_kg_input/`, `auto_kg_output/` — cartelle di input/output per l'automatizzazione (auto-kg)
-- `decorated_graphs/`, `generated_graphs/` — output RDF prodotti dai job
-- `semantic_evidence/` — directory per evidenze estratte/aggregate
+## Main Structure
 
-## Script principali (`script/`)
+- `rdf_schema/` - TTL files for individual databases and `grafo.ttl` (ontology/resource collection)
+- `descriptions/` - `.semantic_evidence.txt` files containing textual evidence for databases
+- `concept_comments/` - JSON files with comments and annotations for database-specific concepts
+- `prompts/` and `system_prompts/` - templates and prompts used to interact with LLMs
+- `script/` - Python scripts that automate the workflow
+- `auto_kg_input/`, `auto_kg_output/` - input/output folders for auto-kg automation
+- `decorated_graphs/`, `generated_graphs/` - RDF outputs produced by the jobs
+- `semantic_evidence/` - directory for extracted or aggregated evidence
+
+## Main Scripts (`script/`)
 
 - `_0_build_prompts.py`
-  - Costruisce prompt a partire da descrizioni, schema e regole, salvando i template nella cartella `prompts/`.
+  - Builds prompts from descriptions, schema information, and rules, saving the templates under `prompts/`.
 
 - `_0_generator.py`
-  - Esegue un modello LLM sui prompt generati per produrre testi di supporto (es. descrizioni, suggerimenti di mapping).
+  - Runs an LLM on the generated prompts to produce supporting text, such as descriptions and mapping suggestions.
 
 - `_1_extract_semantic_evidence.py`
-  - Estrae evidenza semantica dai file di input (ad es. testi, descrizioni) e normalizza i risultati per uso nei prompt.
+  - Extracts semantic evidence from input files, such as text and descriptions, and normalizes the results for prompt construction.
 
 - `_2_generate_db_descriptions.py`
-  - Genera descrizioni estese per ogni database (usa gli output del generatore e le evidenze) e salva in `descriptions/`.
+  - Generates extended descriptions for each database using generator outputs and evidence, then saves them under `descriptions/`.
 
 - `_3_call_auto_kg.py`
-  - Invia l'input formattato all'automazione di KG (auto-kg) e raccoglie l'output in `auto_kg_output/`.
+  - Sends formatted input to the KG automation component (auto-kg) and collects the output under `auto_kg_output/`.
 
 - `_3.5_generare_concept_descriptions.py`
-  - Crea descrizioni specifiche per i singoli concetti (encapsulation) basandosi su evidence e schema.
+  - Creates concept-specific descriptions based on evidence and schema information.
 
 - `_4_build_semantic_kg.py`
-  - Converte gli output (mapping/descrizioni) in triple RDF e costruisce grafi parziali.
+  - Converts outputs such as mappings and descriptions into RDF triples and builds partial graphs.
 
 - `_4.5_create_specfic_prompt.py`
-  - Genera prompt specifici per classificare ogni colonna in uno dei concetti semnatici trovati.
+  - Generates specific prompts to classify each column into one of the discovered semantic concepts.
 
 - `_5_cls_colums.py`
-  - Chiede all agente di classificare ogni colonna in un cocnetto semnatico usando i prompot generati dallo step precedente
+  - Asks the agent to classify each column into a semantic concept using the prompts generated in the previous step.
 
 - `_6_build_complete_kg.py`
-  - Aggrega i grafi parziali e crea `grafo.ttl` o i singoli TTL decorati.
+  - Aggregates partial graphs and creates `grafo.ttl` or the individual decorated TTL files.
 
 - `job_*.sh`
-  - Script batch per sottomettere i job (esecuzione LLM, auto-kg) su cluster. Adattare parametri a seconda dell'infrastruttura.
+  - Batch scripts for submitting jobs, such as LLM execution and auto-kg, on a cluster. Adapt parameters according to the target infrastructure.
 
-## Input e output principali
+## Main Inputs and Outputs
 
-- Input primari:
-  - `data/original/*` (dati grezzi, schemi, ecc.)
-  - file nella cartella `descriptions/` e `prompts/`
-  - eventuali file di evidence in `semantic_evidence/`
+- Primary inputs:
+  - `data/original/*` (raw data, schemas, and related files)
+  - files under `descriptions/` and `prompts/`
+  - optional evidence files under `semantic_evidence/`
 
-- Output:
-  - `generated_graphs/` — grafi prodotti automaticamente (TTL/JSON-LD/etc.)
-  - `decorated_graphs/` — grafi arricchiti con annotazioni semantiche
-  - `concept_comments/*.concept_comments.json` — commenti per concetto
-  - file di log e JSON intermedi in `auto_kg_output/`
+- Outputs:
+  - `generated_graphs/` - automatically generated graphs (TTL, JSON-LD, and related formats)
+  - `decorated_graphs/` - graphs enriched with semantic annotations
+  - `concept_comments/*.concept_comments.json` - comments for each concept
+  - log files and intermediate JSON files under `auto_kg_output/`
 
-## Esecuzione: ordine consigliato
+## Recommended Execution Order
 
-1. Estrai e normalizza evidenze
+1. Extract and normalize evidence.
 
 ```bash
 python script/_1_extract_semantic_evidence.py
 ```
 
-2. Genera descrizioni di database 
+2. Generate database descriptions.
 
 ```bash
 python script/_2_generate_db_descriptions.py
 ```
 
-3. Richiama auto_kg
-''' 
+3. Call auto_kg.
+
+```bash
 sbatch script/job_3_call_auto_kg.sh
-'''
+```
 
-4. Genera descrizioni dei concetti
+4. Generate concept descriptions.
 
-''' 
+```bash
 sbatch script/job_3.5_geenrate_concept_description.sh
-'''
+```
 
-
-6. Costruisci il grafo RDF contenente i concetti
+5. Build the RDF graph containing the concepts.
 
 ```bash
 python script/_4_build_semantic_kg.py
 ```
 
-7. Crea i prompt e Classifica colonne 
+6. Create prompts and classify columns.
 
 ```bash
 python script/_4.5_create_specific_prompt.py
 sbatch job_5_cls_colums.sh
 ```
 
-8. Controlla i TTL generati in `decorated_graphs/` e `generated_graphs/`.
+7. Inspect the TTL files generated under `decorated_graphs/` and `generated_graphs/`.
 
-## Consigli pratici e note
+## Practical Notes
 
-- Mantieni una copia di `grafo.ttl` e aggiorna solo dopo controllo manuale dei risultati.
-- I job LLM richiedono risorse: usare nodi GPU con adeguata memoria per `_0_generator.py`.
-- Controllare i file in `auto_kg_output/` per eventuali errori di parsing.
-- I `concept_comments/*.json` possono essere usati come layer di spiegazione per agenti downstream.
-
+- Keep a copy of `grafo.ttl` and update it only after manually checking the results.
+- LLM jobs require compute resources; use GPU nodes with adequate memory for `_0_generator.py`.
+- Check the files under `auto_kg_output/` for possible parsing errors.
+- `concept_comments/*.json` can be used as an explanation layer for downstream agents.

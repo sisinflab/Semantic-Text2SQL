@@ -1,54 +1,56 @@
 # Compute Pipeline EX
 
-Questa cartella contiene lo script `compute_results.py`, usato per calcolare come opera la pipeline di correzione a partire dai risultati delle diverse estrazioni.
+This repository supports the paper **"Unified Knowledge Graphs for Adaptive Semantic Refinement in Text-to-SQL"**, submitted to the ISWC 2026 Industry Track, and is developed in collaboration with the **IBM T.J. Watson Research Center**.
 
-## Scopo dello script
+This folder contains `compute_results.py`, a script used to measure how the correction pipeline behaves across the results of different extraction stages.
 
-Lo script confronta tre file JSON di input:
+## Script Purpose
+
+The script compares three input JSON files:
 
 - `base.json`
 - `type.json`
 - `description.json`
 
-L’obiettivo è misurare quante query sbagliate nella fase base vengono corrette dai passaggi successivi della pipeline, separando i contributi del primo e del secondo stadio di correzione.
+The goal is to measure how many queries that fail in the base stage are corrected by the subsequent pipeline steps, separating the contributions of the first and second correction stages.
 
-## Come funziona
+## How It Works
 
-`compute_results.py` carica i tre JSON e usa `question_id` come chiave di allineamento tra i vari risultati.
+`compute_results.py` loads the three JSON files and uses `question_id` as the alignment key across the result sets.
 
-Il flusso è il seguente:
+The workflow is:
 
-1. parte dai casi con errore presenti in `base.json`;
-2. verifica se `description.json` riesce a correggere quei casi;
-3. sui residui non risolti, verifica se `type.json` riesce a correggerli;
-4. aggrega i risultati per categoria di errore, ad esempio:
+1. start from the error cases in `base.json`;
+2. check whether `description.json` corrects those cases;
+3. for the remaining unresolved cases, check whether `type.json` corrects them;
+4. aggregate the results by error category, for example:
    - `Ambiguous Column`
    - `No Such Column`
    - `Syntax Error`
-   - `Altro`
+   - `Other`
 
-In questo modo si può capire in modo semplice e ripetibile quanto ogni fase della pipeline contribuisce alla correzione finale.
+This makes it possible to understand, in a simple and reproducible way, how much each pipeline stage contributes to the final correction.
 
 ## Output
 
-Lo script stampa a video un report aggregato con:
+The script prints an aggregated report with:
 
-- numero di casi risolti nel primo step;
-- numero di casi risolti nel secondo step;
-- totale per categoria di errore;
-- riepilogo finale dei question id corretti;
-- salvataggio dei risultati in `2_report_results.json`.
+- number of cases solved in the first step;
+- number of cases solved in the second step;
+- total by error category;
+- final summary of corrected question IDs;
+- saved results in `2_report_results.json`.
 
-## Uso
+## Usage
 
-Esegui lo script dalla cartella del progetto:
+Run the script from the project folder:
 
 ```bash
 python compute_results.py
 ```
 
-I file `base.json`, `description.json` e `type.json` devono essere presenti nel percorso atteso dallo script, altrimenti i caricamenti falliranno.
+The files `base.json`, `description.json`, and `type.json` must be available at the paths expected by the script; otherwise, loading will fail.
 
-## Nota
+## Note
 
-Questo script non genera le estrazioni, ma analizza i loro risultati per capire come la pipeline di correzione si comporta tra base, description e type.
+This script does not generate extraction outputs. It analyzes their results to show how the correction pipeline behaves across the base, description, and type stages.

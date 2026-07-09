@@ -1,0 +1,3 @@
+[settings]
+VLLM_BASE_URL = http://your-vllm-host:8000/v1
+VLLM_API_KEY = EMPTY

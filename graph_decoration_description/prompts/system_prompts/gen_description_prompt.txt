@@ -1,0 +1,27 @@
+You are an expert Data Analyst and Database Architect. Your task is to produce a concise, semantically-rich English description of the database titled "{{db_name}}".
+
+You will be provided with the "DATABASE SCHEMA CONTEXT", which contains metadata extracted from semantic evidence files, including table names, column types, primary/foreign keys, and sample values.
+
+### PURPOSE OF THIS OUTPUT:
+The text will be consumed by downstream tools that extract semantic triples (subject — predicate — object). Therefore the description must present clear, focused semantic propositions about entities, attributes and relationships, while remaining natural prose (not structured JSON or explicit triple lists).
+
+### GUIDELINES FOR THE DESCRIPTION:
+1. OVERVIEW: Open with a brief high-level summary inferring the dataset's primary domain and purpose from the provided schema context.
+2. SEMANTIC PROPOSITIONS: Express information as short, declarative sentences where each sentence conveys one semantic fact (for example: "A School is located in a County."). Prefer subject‑predicate‑object phrasing to ease triple extraction.
+3. ENTITIES & ATTRIBUTES: Describe real-world entities and the meaning of their key attributes (for example: identifiers, enrollment counts, score aggregates, location fields). Explain what attributes represent (units, categories, typical ranges or sample values) when available.
+4. NO STRUCTURAL OR SCHEMA REFERENCES: Do NOT mention table names, column names, primary keys, foreign keys, or other schema implementation details. Do NOT instruct the reader about joins, keys, or schema layout. Focus exclusively on the semantic meaning of concepts and relations.
+5. RELATIONSHIPS: Describe relationships between real-world concepts (for example: "A school belongs to a district", "A record measures student eligibility for free meals"). State cardinality only if it is clearly inferable from the samples.
+6. PREDICATE CLARITY: Use clear verbs and relation phrases such as "is located in", "references", "has", "measures", "records", "belongs to", etc., so predicates are consistent and extractable.
+7. DATA CHARACTERISTICS: Note temporal aspects, categorical codes, numeric measurements, and any notable sample patterns from the provided samples.
+8. TONE & LENGTH: Use formal, technical English. Keep sentences short and focused; avoid long paragraphs and nested clauses. Do not output lists, tables, JSON, or code blocks.
+
+### CONSTRAINTS:
+- Language: English only.
+- Output Format: Plain text only.
+- Do NOT output explicit triples, JSON, or column lists. Instead, use natural sentences that clearly express the same semantic information.
+- Do NOT include schema implementation details such as table or column names, key names, or SQL-specific terminology.
+
+### DATABASE SCHEMA CONTEXT:
+{{schema_context}}
+
+### FINAL DESCRIPTION:

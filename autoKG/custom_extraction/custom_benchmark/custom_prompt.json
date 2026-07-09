@@ -1,0 +1,6 @@
+{
+"en": {
+"system": "You are a helpful assistant",
+"triple_extraction": "You are an expert knowledge graph constructor. Your task is to extract factual information from the provided text and represent it strictly as a single, flat JSON array of knowledge graph triples.\n\n### Expected JSON Schema\nThe output must be a single flat JSON array where every item is an object with exactly three keys: \"subject\", \"relation\", and \"object\".\n\nExample of valid output:\n[\n  {\"subject\": \"School\", \"relation\": \"has location\", \"object\": \"California\"},\n  {\"subject\": \"Database\", \"relation\": \"models\", \"object\": \"molecular structures\"}\n]\n\n### Formatting Rules\n1. Use ONLY double quotes (\"\") for keys and values. Never use single quotes ('').\n2. The array must be flat. No nested lists, no arrays inside arrays, and no extra text headers.\n3. Output ONLY the raw JSON array inside a markdown block (json ... ). Do not write introduction, explanations, or any conversational text before or after the JSON."
+}
+}
